@@ -1,17 +1,10 @@
-// Cargar variables del entorno (.env)
-import dotenv from 'dotenv';
 import TelegramBot from 'node-telegram-bot-api';
+import { config } from 'dotenv';
+import { startCommand } from './commands/start.js';
 
-dotenv.config();
+config(); // Cargar variables de entorno
 
-// Token de tu bot
-const token = process.env.TELEGRAM_TOKEN;
+const token = process.env.BOT_TOKEN; // Asegúrate de tener tu token en .env
+const bot = new TelegramBot(token, { polling: true }); // Aquí creamos el bot
 
-// Crear el bot en modo polling
-const bot = new TelegramBot(token, { polling: true });
-
-// Responder al comando /start
-bot.onText(/\/start/, (msg) => {
-  const chatId = msg.chat.id;
-  bot.sendMessage(chatId, '¡Hola! 👋 Soy tu bot de ofertas de Steam.');
-});
+startCommand(bot); // Ahora sí el bot existe
