@@ -1,4 +1,6 @@
 {
   "start_message": "Hello, {{name}}! 👋\n\nI'm your personal Steam deals bot. 🚀\nI can show you the best discounts tailored to your preferences.\n\nWould you like to set up your favorite categories and minimum discount?\n\nUse the /setup command to customize your experience. 🎯",
-  "setup_button": "🔧 Customize deals"
+  "setup_button": "🔧 Customize deals",
+  "select_discount": "Select the minimum discount percentage you want to receive:",
+  "confirmed_discount": "✅ Done! I will send you games with at least {{discount}}% discount."
 }

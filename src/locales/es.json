@@ -1,5 +1,6 @@
 {
-    "start_message": "¡Hola, {{name}}! 👋\n\nSoy tu bot personal de ofertas de Steam. 🚀\nPuedo mostrarte los mejores descuentos adaptados a tus gustos.\n\n¿Quieres configurar tus categorías favoritas y tu porcentaje de descuento mínimo?\n\nUsa el comando /setup para personalizar tu experiencia. 🎯",
-    "setup_button": "🔧 Personalizar ofertas"
-  }
-  
+  "start_message": "¡Hola, {{name}}! 👋\n\nSoy tu bot personal de ofertas de Steam. 🚀\nPuedo mostrarte los mejores descuentos adaptados a tus gustos.\n\n¿Quieres configurar tus categorías favoritas y tu porcentaje de descuento mínimo?\n\nUsa el comando /setup para personalizar tu experiencia. 🎯",
+  "setup_button": "🔧 Personalizar ofertas",
+  "select_discount": "Selecciona el porcentaje mínimo de descuento que deseas recibir en las ofertas:",
+  "confirmed_discount": "✅ ¡Listo! Te enviaré juegos con al menos {{discount}}% de descuento."
+}

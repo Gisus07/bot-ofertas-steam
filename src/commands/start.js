@@ -6,9 +6,13 @@ export const startCommand = (bot) => {
     const languageCode = msg.from.language_code || "en";
     const firstName = msg.from.first_name || "";
 
-    const welcomeMessage = await getLocalizedText(languageCode, 'start_message', { name: firstName });
+    const welcomeMessage = await getLocalizedText(
+      languageCode,
+      "start_message",
+      { name: firstName },
+    );
 
-    const buttonText = await getLocalizedText(languageCode, 'setup_button');
+    const buttonText = await getLocalizedText(languageCode, "setup_button");
 
     bot.sendMessage(chatId, welcomeMessage, {
       reply_markup: {

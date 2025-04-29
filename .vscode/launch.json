@@ -1,20 +1,16 @@
 {
-    "version": "0.2.0",
-    "configurations": [
-      {
-        "type": "node",
-        "request": "launch",
-        "name": "Iniciar Bot Telegram",
-        "skipFiles": ["<node_internals>/**"],
-        "program": "${workspaceFolder}/src/index.js",
-        "runtimeArgs": [
-          "--env-file",
-          ".env"
-        ],
-        "envFile": "${workspaceFolder}/.env",
-        "console": "integratedTerminal",
-        "internalConsoleOptions": "neverOpen"
-      }
-    ]
-  }
-  
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "type": "node",
+      "request": "launch",
+      "name": "Iniciar Bot Telegram",
+      "skipFiles": ["<node_internals>/**"],
+      "program": "${workspaceFolder}/src/index.js",
+      "runtimeArgs": ["--env-file", ".env"],
+      "envFile": "${workspaceFolder}/.env",
+      "console": "integratedTerminal",
+      "internalConsoleOptions": "neverOpen"
+    }
+  ]
+}

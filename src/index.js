@@ -1,10 +1,12 @@
-import TelegramBot from 'node-telegram-bot-api';
-import { config } from 'dotenv';
-import { startCommand } from './commands/start.js';
+import TelegramBot from "node-telegram-bot-api";
+import { config } from "dotenv";
+import { startCommand } from "./commands/start.js";
+import { setupCommand } from "./commands/setup.js";
 
-config(); // Cargar variables de entorno
+config();
 
-const token = process.env.BOT_TOKEN; // Asegúrate de tener tu token en .env
-const bot = new TelegramBot(token, { polling: true }); // Aquí creamos el bot
+const token = process.env.BOT_TOKEN;
+const bot = new TelegramBot(token, { polling: true });
 
-startCommand(bot); // Ahora sí el bot existe
+startCommand(bot);
+setupCommand(bot);
