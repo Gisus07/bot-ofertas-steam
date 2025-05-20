@@ -1,3 +1,4 @@
 node_modules/ 
 .env
 .vscode/
+firebase_key.json
