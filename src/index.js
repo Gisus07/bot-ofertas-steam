@@ -14,6 +14,7 @@ config();
 const token = process.env.BOT_TOKEN;
 const bot = new TelegramBot(token, { polling: true });
 const adminId = Number(process.env.ADMIN_ID);
+let isSyncRunning = false;
 
 // 📌 Comandos generales (para todos)
 bot.setMyCommands([
@@ -49,11 +50,30 @@ totalJuegosCommand(bot);
 // ✅ Confirmación
 console.log("🤖 Bot de ofertas Steam activo y escuchando comandos...");
 
+async function ejecutarSyncProtegido(bot) {
+  if (isSyncRunning) {
+    console.log("⏳ Sincronización ya en curso. Cancelando nueva ejecución.");
+    return;
+  }
+
+  try {
+    isSyncRunning = true;
+    console.log("🟢 Iniciando sincronización...");
+    await ejecutarSync(bot);
+    console.log("✅ Sincronización finalizada.");
+  } catch (error) {
+    console.error("❌ Error durante sincronización:", error);
+  } finally {
+    isSyncRunning = false;
+  }
+}
+
+
 // 🚀 Sincronización inicial
-ejecutarSync(bot);
+ejecutarSyncProtegido(bot);
 
 // ⏰ Sincronización automática cada 30 minutos
 cron.schedule("*/30 * * * *", () => {
   console.log("⏰ Ejecutando sincronización automática...");
-  ejecutarSync(bot);
+  ejecutarSyncProtegido(bot);
 });

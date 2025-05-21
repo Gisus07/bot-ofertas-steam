@@ -1,0 +1,13 @@
+version: '3.8'
+
+services:
+  bot-ofertas-steam:
+    container_name: steam-bot
+    build: .
+    restart: always
+    environment:
+      - NODE_ENV=production
+    volumes:
+      - .:/app
+    env_file:
+      - .env

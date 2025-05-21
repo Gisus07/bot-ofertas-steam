@@ -19,7 +19,11 @@ export async function obtenerFechaConFallback(url) {
 
   console.log("⚙️ Usando Puppeteer como fallback para:", url);
   try {
-    const browser = await puppeteer.launch({ headless: "new" });
+    const browser = await puppeteer.launch({
+  headless: "new",
+  args: ['--no-sandbox']
+});
+
     const page = await browser.newPage();
     await page.setUserAgent("Mozilla/5.0 Chrome/122.0.0.0");
     await page.goto(url, { waitUntil: "domcontentloaded", timeout: 15000 });
@@ -142,20 +146,67 @@ export async function obtenerFechaFinOferta(url) {
  * Scrapea ofertas de Steam usando scroll infinito con Puppeteer
  */
 export async function obtenerOfertasSteam(descuentoMinimo = 10) {
-  const browser = await puppeteer.launch({ headless: "new" });
+  const browser = await puppeteer.launch({
+    headless: "new",
+    args: ["--no-sandbox"],
+  });
+
   const page = await browser.newPage();
   await page.setUserAgent("Mozilla/5.0 Chrome/122.0.0.0");
 
   console.log("🎯 Aplicando filtro: solo juegos (category1=998)");
   await page.goto(URL, { waitUntil: "domcontentloaded" });
 
-  // 🕒 Espera inicial para asegurar carga
   await new Promise((resolve) => setTimeout(resolve, 2000));
 
+  const ofertas = [];
   let previousHeight = 0;
   let retry = 0;
 
-  while (retry < 5) {
+  while (retry < 5 && ofertas.length < 100) {
+    const juegos = await page.$$(".search_result_row");
+
+    for (const juego of juegos.slice(ofertas.length)) {
+      try {
+        const nombre = await juego.$eval(".title", (el) => el.textContent.trim());
+        const urlJuego = await juego.evaluate((el) => el.href);
+        const descuentoTexto = await juego
+          .$eval(".discount_pct", (el) => el.textContent.trim())
+          .catch(() => "");
+        const descuentoNumero = parseInt(
+          descuentoTexto.replace("-", "").replace("%", "")
+        );
+
+        if (isNaN(descuentoNumero) || descuentoNumero < descuentoMinimo) continue;
+
+        const precioViejo = await juego
+          .$eval(".discount_original_price", (el) => el.textContent.trim())
+          .catch(() => "");
+        const precioNuevo = await juego
+          .$eval(".discount_final_price", (el) => el.textContent.trim())
+          .catch(() => "");
+        if (!precioNuevo) continue;
+
+        const appid = urlJuego.match(/app\/(\d+)/)?.[1];
+        if (!appid) continue;
+
+        ofertas.push({
+          appid,
+          nombre,
+          url: urlJuego,
+          descuento: `-${descuentoNumero}%`,
+          precioViejo: precioViejo ? `~${precioViejo}~` : "N/A",
+          precioNuevo,
+        });
+
+        if (ofertas.length >= 100) break;
+      } catch (error) {
+        console.warn("⚠️ Error al procesar juego:", error.message);
+      }
+    }
+
+    if (ofertas.length >= 100) break;
+
     const currentHeight = await page.evaluate(() => {
       window.scrollBy(0, window.innerHeight);
       return document.body.scrollHeight;
@@ -171,56 +222,9 @@ export async function obtenerOfertasSteam(descuentoMinimo = 10) {
     await new Promise((resolve) => setTimeout(resolve, 1000));
   }
 
-  const juegos = await page.$$(".search_result_row");
-
-  // ⚠️ Validación crítica: si no se cargó nada, aborta sin eliminar nada
-  if (juegos.length === 0) {
-    console.warn(
-      "⚠️ Steam no devolvió ningún juego. Posible bloqueo o error temporal."
-    );
-    await browser.close();
-    return [];
-  }
-
-  console.log(`🔎 Total juegos detectados: ${juegos.length}`);
-
-  const fechasPorJuego = new Map();
-  const ofertas = [];
-
-  for (const juego of juegos) {
-    const nombre = await juego.$eval(".title", (el) => el.textContent.trim());
-    const urlJuego = await juego.evaluate((el) => el.href);
-    const descuentoTexto = await juego
-      .$eval(".discount_pct", (el) => el.textContent.trim())
-      .catch(() => "");
-    const descuentoNumero = parseInt(
-      descuentoTexto.replace("-", "").replace("%", "")
-    );
-
-    if (isNaN(descuentoNumero) || descuentoNumero < descuentoMinimo) continue;
-
-    const precioViejo = await juego
-      .$eval(".discount_original_price", (el) => el.textContent.trim())
-      .catch(() => "");
-    const precioNuevo = await juego
-      .$eval(".discount_final_price", (el) => el.textContent.trim())
-      .catch(() => "");
-    if (!precioNuevo) continue;
-
-    const appid = urlJuego.match(/app\/(\d+)/)?.[1];
-    if (!appid) continue;
-
-    ofertas.push({
-      appid,
-      nombre,
-      url: urlJuego,
-      descuento: `-${descuentoNumero}%`,
-      precioViejo: precioViejo ? `~${precioViejo}~` : "N/A",
-      precioNuevo,
-      // ❌ ya no obtenemos `hasta` aquí
-    });
-  }
-
   await browser.close();
+
+  console.log(`🏆 Total de juegos seleccionados: ${ofertas.length}`);
   return ofertas;
 }
+
