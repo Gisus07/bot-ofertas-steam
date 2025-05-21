@@ -7,6 +7,7 @@ import { stopCommand } from "./commands/stop.js";
 import { ultimosCommand } from "./commands/ultimos.js";
 import ejecutarSync from "./sync/steamSync.js";
 import { limpiarHuerfanosCommand } from "./commands/limpiar.js";
+import {} from "./commands/totalJuegos.js"
 
 config();
 

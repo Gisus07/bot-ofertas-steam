@@ -47,7 +47,16 @@ export async function obtenerFechaConFallback(url) {
 
       console.log("📄 Texto obtenido con Puppeteer:", texto);
 
-      const fechaRelativa = convertirTiempoRestanteATimestamp(texto);
+      let fechaRelativa = convertirTiempoRestanteATimestamp(texto);
+
+      // Compatibilidad adicional: si dice "finaliza en HH:MM:SS", lo reformatea
+      if (!fechaRelativa && /\d{1,2}:\d{2}:\d{2}/.test(texto)) {
+        const nuevoTexto = texto
+          .replace(/.*?(dentro de|in|finaliza en|termina en)/i, "in")
+          .trim();
+        fechaRelativa = convertirTiempoRestanteATimestamp(nuevoTexto);
+      }
+
       if (fechaRelativa) {
         await browser.close();
         return fechaRelativa;

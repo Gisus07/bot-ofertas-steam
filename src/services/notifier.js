@@ -6,6 +6,15 @@ export function escapeMarkdown(text) {
     .replace(/([_\*\[\]\(\)~`>#+=|{}.!-])/g, "\\$1"); // Luego el resto (incluyendo punto)
 }
 
+function formatearFecha(fechaISO) {
+  const fecha = new Date(fechaISO);
+  if (isNaN(fecha)) return "?";
+  const dia = String(fecha.getDate()).padStart(2, "0");
+  const mes = String(fecha.getMonth() + 1).padStart(2, "0");
+  const año = fecha.getFullYear();
+  return `${dia}-${mes}-${año}`;
+}
+
 export async function notificarOferta(bot, oferta) {
   const usuarios = await obtenerUsuariosSuscritos();
 
@@ -16,7 +25,7 @@ ${escapeMarkdown(oferta.url)}
 💰 Precio: ~${escapeMarkdown(oferta.precioViejo)}~ → *${escapeMarkdown(oferta.precioNuevo)}*
 🔻 Descuento: *${escapeMarkdown(oferta.descuento)}*
 📅 Fecha: ${escapeMarkdown(oferta.registrada?.split("T")[0].split("-").reverse().join("-") || "?")}
-📆 Disponible hasta: ${escapeMarkdown(oferta.hasta)}
+📆 Disponible hasta: ${escapeMarkdown(formatearFecha(oferta.hasta))}
 `.trim();
 
   for (const userId of usuarios) {

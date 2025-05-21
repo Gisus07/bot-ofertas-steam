@@ -8,7 +8,7 @@ const MESES_ES = {
  * Retorna null si no se detecta el formato esperado.
  */
 export function convertirTiempoRestanteATimestamp(texto) {
-  const match = texto.match(/(?:dentro de|in)\s*(\d{1,2}):(\d{2}):(\d{2})/i);
+  const match = texto.match(/(?:dentro de|in|finaliza en|termina en)\s*(\d{1,2}):(\d{2}):(\d{2})/i);
   if (!match) {
     console.log("⛔ No se detectó patrón de tiempo restante:", texto);
     return null;
@@ -29,6 +29,7 @@ export function convertirTiempoRestanteATimestamp(texto) {
 
   return fechaFinal.toISOString();
 }
+
 
 /**
  * Convierte "25 mayo" o "25 de mayo" a fecha ISO usando el año actual (o el siguiente si ya pasó).
