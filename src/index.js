@@ -73,8 +73,14 @@ async function ejecutarSyncProtegido(bot) {
 ejecutarSyncProtegido(bot);
 
 // ⏰ Sincronización automática cada 30 minutos
-cron.schedule("*/30 * * * *", () => {
-  console.log("isSyncRunning", isSyncRunning)
-  console.log("⏰ Ejecutando sincronización automática...");
+cron.schedule("0 * * * *", async () => {
+  const ahora = new Date().toISOString();
+
+  if (isSyncRunning) {
+    console.warn(`⚠️ [${ahora}] Sincronización ya en curso. Se omite ejecución automática.`);
+    return;
+  }
+
+  console.log(`⏰ [${ahora}] Ejecutando sincronización automática...`);
   ejecutarSyncProtegido(bot);
 });

@@ -13,34 +13,24 @@ const MESES = {
   diciembre: 11, december: 11
 };
 
-
 /**
  * Convierte texto tipo "Finaliza dentro de 38:15:45" a un timestamp ISO.
  * Retorna null si no se detecta el formato esperado.
  */
 export function convertirTiempoRestanteATimestamp(texto) {
   const match = texto.match(/(?:dentro de|in|finaliza en|termina en)\s*(\d{1,2}):(\d{2}):(\d{2})/i);
-  if (!match) {
-    console.log("⛔ No se detectó patrón de tiempo restante:", texto);
-    return null;
-  }
+  if (!match) return null;
 
   const [, horasStr, minutosStr, segundosStr] = match;
   const horas = parseInt(horasStr);
   const minutos = parseInt(minutosStr);
   const segundos = parseInt(segundosStr);
 
-  console.log(`⏱️ Tiempo detectado: ${horas}h ${minutos}m ${segundos}s`);
-
   const ahora = new Date();
   const fechaFinal = new Date(ahora.getTime() + ((horas * 3600 + minutos * 60 + segundos) * 1000));
 
-  console.log(`🕒 Fecha actual: ${ahora.toISOString()}`);
-  console.log(`📆 Fecha calculada: ${fechaFinal.toISOString()}`);
-
   return fechaFinal.toISOString();
 }
-
 
 /**
  * Convierte "25 mayo" o "25 de mayo" a fecha ISO usando el año actual (o el siguiente si ya pasó).

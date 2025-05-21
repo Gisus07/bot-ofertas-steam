@@ -10,26 +10,29 @@ export async function verificarDescuentoSteam(appid) {
     const url = `https://store.steampowered.com/api/appdetails?appids=${appid}`;
     const res = await fetch(url);
 
-    // Validar tipo de contenido antes del .json()
+    // Validar tipo de contenido antes de parsear
     const contentType = res.headers.get("content-type");
     if (!contentType || !contentType.includes("application/json")) {
-      console.log(`⚠️ Respuesta no JSON para AppID ${appid}`);
+      console.warn(`⚠️ Respuesta no JSON para AppID ${appid}`);
       return null;
     }
 
-    const data = await res.json();
+    let data;
+    try {
+      data = await res.json();
+    } catch (jsonErr) {
+      console.warn(`⚠️ Error al parsear JSON de AppID ${appid}`);
+      return null;
+    }
 
-    // Verificar si la respuesta contiene null (posible saturación o contenido bloqueado)
-    if (!data[appid]) {
-      console.log(`⚠️ API Steam devolvió null para AppID: ${appid}`);
+    if (!data || typeof data[appid] !== "object") {
+      console.warn(`⚠️ Respuesta inválida o nula para AppID ${appid}`);
       return null;
     }
 
     const juego = data[appid];
-
-    // Verificación robusta de éxito
     if (!juego.success || !juego.data) {
-      console.log(`⚠️ API Steam no encontró datos válidos para AppID: ${appid}`);
+      console.warn(`⚠️ API Steam no encontró datos válidos para AppID: ${appid}`);
       return null;
     }
 

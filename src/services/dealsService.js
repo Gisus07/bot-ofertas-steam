@@ -11,7 +11,6 @@ export async function buscarJuego(nombre) {
     const json = await res.json();
 
     // DEBUG TEMPORAL
-    console.log("Respuesta cruda de API:", JSON.stringify(json, null, 2));
 
     if (!json || !json.data || !json.data.results) {
       throw new Error("Estructura inesperada en la respuesta de la API");

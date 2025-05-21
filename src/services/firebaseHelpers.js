@@ -1,5 +1,3 @@
-// src/services/firebaseHelpers.js
-
 import { db } from "../firebase/firebase.js";
 
 /**
@@ -15,8 +13,7 @@ export async function obtenerAppIDsFirebase() {
     if (data.appid) {
       appIDs.add(String(data.appid));
     } else {
-      // Si no hay campo `appid`, usamos el ID del documento
-      appIDs.add(doc.id);
+      appIDs.add(doc.id); // fallback si no hay campo appid
     }
   });
 
@@ -32,9 +29,9 @@ export async function obtenerAppIDsFirebase() {
 export function filtrarOfertasNuevasPorAppID(ofertas, appIDsExistentes) {
   return ofertas.filter(oferta => {
     const appid = oferta.url.match(/app\/(\d+)/)?.[1];
-    if (!appid) return false; // si no hay appid válido, la descartamos
+    if (!appid) return false;
 
-    oferta.appid = appid; // lo adjuntamos para uso posterior
+    oferta.appid = appid;
     return !appIDsExistentes.has(appid);
   });
 }
@@ -45,7 +42,7 @@ export function filtrarOfertasNuevasPorAppID(ofertas, appIDsExistentes) {
  */
 export async function eliminarOfertasVencidas() {
   const snapshot = await db.collection("ofertas").get();
-  const ahora = Date.now(); // más preciso y directo
+  const ahora = Date.now();
 
   const eliminadas = [];
 
@@ -53,12 +50,11 @@ export async function eliminarOfertasVencidas() {
     const data = doc.data();
     if (!data.hasta) continue;
 
-    const fechaHastaMs = Date.parse(data.hasta); // más robusto
+    const fechaHastaMs = Date.parse(data.hasta);
     if (isNaN(fechaHastaMs)) continue;
 
     if (fechaHastaMs < ahora) {
       await db.collection("ofertas").doc(doc.id).delete();
-      console.log(`🗑️ Oferta vencida eliminada: ${data.nombre} (AppID ${doc.id})`);
       eliminadas.push({ appid: doc.id, nombre: data.nombre });
     }
   }
@@ -66,5 +62,3 @@ export async function eliminarOfertasVencidas() {
   console.log(`\n✅ Ofertas vencidas eliminadas: ${eliminadas.length}`);
   return eliminadas;
 }
-
-

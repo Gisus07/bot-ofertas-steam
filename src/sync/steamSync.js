@@ -27,8 +27,6 @@ export default async function ejecutarSync(bot) {
   console.log(`📌 Ofertas nuevas (no registradas aún): ${nuevasOfertas.length}`);
 
   let procesadas = 0;
-
-  // 🔁 Invertimos el orden para guardar del 100 → 1
   const nuevasOfertasInvertidas = [...nuevasOfertas].reverse();
 
   const tareas = nuevasOfertasInvertidas.map((oferta) =>
@@ -37,20 +35,10 @@ export default async function ejecutarSync(bot) {
         const appid = oferta.appid;
         const datosSteam = await verificarDescuentoSteam(appid);
 
-        if (!datosSteam || !datosSteam.descuento) {
-          console.log(`❌ Sin descuento válido en API para ${oferta.url}`);
-          return;
-        }
+        if (!datosSteam || !datosSteam.descuento) return;
 
         const hasta = await obtenerFechaConFallback(oferta.url);
-        if (!hasta) {
-          console.log(`⚠️ No se pudo obtener la fecha para ${oferta.url}`);
-          return;
-        }
-
-        console.log(
-          `✅ Descuento API: ${datosSteam.descuento_porcentaje}% - ${datosSteam.precio_actual} USD en ${oferta.url}`
-        );
+        if (!hasta) return;
 
         const fueGuardado = await guardarOferta({
           ...oferta,
@@ -78,10 +66,8 @@ export default async function ejecutarSync(bot) {
   );
 
   await Promise.all(tareas);
-
   console.log("\n✅ Nuevas ofertas registradas:", procesadas);
 
-  // 🧹 Limpieza de ofertas vencidas
   const eliminadas = await eliminarOfertasVencidas();
   for (const oferta of eliminadas) {
     await notificarEliminacion(bot, oferta);

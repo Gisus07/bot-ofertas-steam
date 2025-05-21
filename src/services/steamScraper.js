@@ -8,16 +8,12 @@ import {
   convertirFechaLiteralATimestamp,
 } from "../utils/fechaHelper.js";
 
-const URL = "https://store.steampowered.com/search/?specials=1&category1=998";
+const URL = "https://store.steampowered.com/search/?supportedlang=spanish&category1=998&specials=1&ndl=1";
 
-/**
- * Intenta extraer la fecha con Puppeteer si Axios no lo logra
- */
 export async function obtenerFechaConFallback(url) {
   const fechaAxios = await obtenerFechaFinOferta(url);
   if (fechaAxios) return fechaAxios;
 
-  console.log("⚙️ Usando Puppeteer como fallback para:", url);
   try {
     const browser = await puppeteer.launch({
       headless: "new",
@@ -28,10 +24,8 @@ export async function obtenerFechaConFallback(url) {
     await page.setUserAgent("Mozilla/5.0 Chrome/122.0.0.0");
     await page.goto(url, { waitUntil: "domcontentloaded", timeout: 15000 });
 
-    // Si hay verificación de edad, completarla
     const ageCheck = await page.$("#ageYear");
     if (ageCheck) {
-      console.log("🔞 Completando formulario de verificación de edad...");
       await page.select("#ageDay", "1");
       await page.select("#ageMonth", "January");
       await page.select("#ageYear", "1995");
@@ -49,11 +43,7 @@ export async function obtenerFechaConFallback(url) {
         countdownElement
       );
 
-      console.log("📄 Texto obtenido con Puppeteer:", texto);
-
       let fechaRelativa = convertirTiempoRestanteATimestamp(texto);
-
-      // Compatibilidad adicional: si dice "finaliza en HH:MM:SS", lo reformatea
       if (!fechaRelativa && /\d{1,2}:\d{2}:\d{2}/.test(texto)) {
         const nuevoTexto = texto
           .replace(/.*?(dentro de|in|finaliza en|termina en)/i, "in")
@@ -72,28 +62,20 @@ export async function obtenerFechaConFallback(url) {
         return fechaLiteral;
       }
 
-      // Fallback manual si el texto no encajó pero sí hay día y mes
       const match =
         texto.match(/Offer ends\s+(\d{1,2})\s+(\w+)/i) ||
         texto.match(/finaliza el\s+(\d{1,2})\s+de\s+(\w+)/i);
 
       if (match) {
         const textoCompuesto = `${match[1]} ${match[2]}`;
-        const fechaFallback = convertirFechaLiteralATTimestamp(textoCompuesto);
+        const fechaFallback = convertirFechaLiteralATimestamp(textoCompuesto);
         await browser.close();
         return fechaFallback || null;
       }
 
       await browser.close();
-      console.log("⚠️ Puppeteer no encontró fecha.");
-      return null;
-
-      console.log("⚠️ Puppeteer no encontró fecha.");
       return null;
     } else {
-      console.log(
-        "⚠️ El elemento .game_purchase_discount_countdown no está presente en el DOM."
-      );
       await browser.close();
       return null;
     }
@@ -103,9 +85,6 @@ export async function obtenerFechaConFallback(url) {
   }
 }
 
-/**
- * Extrae la fecha de finalización desde HTML con Axios + Cheerio
- */
 export async function obtenerFechaFinOferta(url) {
   try {
     const { data } = await axios.get(url, {
@@ -113,28 +92,13 @@ export async function obtenerFechaFinOferta(url) {
     });
 
     const $ = cheerio.load(data);
-    console.log(`📄 Verificando fecha en: ${url}`);
-
     const contenedor = $(".game_purchase_discount_countdown");
-    if (contenedor.length === 0) {
-      console.log(
-        "❌ No se encontró el elemento .game_purchase_discount_countdown"
-      );
-      return null;
-    }
+    if (contenedor.length === 0) return null;
 
-    const html = contenedor.html()?.trim() || "";
     const textoPlano = contenedor.text().trim();
-
-    console.log("📦 HTML bruto:", html);
-    console.log("📦 Texto plano:", textoPlano);
-
-    // Convertimos cualquier coincidencia de fecha literal a formato ISO
     const match = textoPlano.match(/(\d{1,2})\s*(?:de\s*)?(\w+)/i);
     if (match) {
-      const fechaIso = convertirFechaLiteralATimestamp(
-        `${match[1]} ${match[2]}`
-      );
+      const fechaIso = convertirFechaLiteralATimestamp(`${match[1]} ${match[2]}`);
       if (fechaIso) return fechaIso;
     }
 
@@ -146,9 +110,6 @@ export async function obtenerFechaFinOferta(url) {
   }
 }
 
-/**
- * Scrapea ofertas de Steam usando scroll infinito con Puppeteer
- */
 export async function obtenerOfertasSteam(descuentoMinimo = 10) {
   const browser = await puppeteer.launch({
     headless: "new",
@@ -163,28 +124,29 @@ export async function obtenerOfertasSteam(descuentoMinimo = 10) {
 
   await new Promise((resolve) => setTimeout(resolve, 2000));
 
+  const appidsProcesados = new Set();
   const ofertas = [];
   let previousHeight = 0;
   let retry = 0;
 
-  while (retry < 5 && ofertas.length < 100) {
+  while (retry < 5) {
     const juegos = await page.$$(".search_result_row");
 
-    for (const juego of juegos.slice(ofertas.length)) {
+    for (const juego of juegos) {
+      const urlJuego = await juego.evaluate((el) => el.href);
+      const appid = urlJuego.match(/app\/(\d+)/)?.[1];
+      if (!appid || appidsProcesados.has(appid)) continue;
+
+      appidsProcesados.add(appid);
+
       try {
-        const nombre = await juego.$eval(".title", (el) =>
-          el.textContent.trim()
-        );
-        const urlJuego = await juego.evaluate((el) => el.href);
+        const nombre = await juego.$eval(".title", (el) => el.textContent.trim());
         const descuentoTexto = await juego
           .$eval(".discount_pct", (el) => el.textContent.trim())
           .catch(() => "");
-        const descuentoNumero = parseInt(
-          descuentoTexto.replace("-", "").replace("%", "")
-        );
+        const descuentoNumero = parseInt(descuentoTexto.replace("-", "").replace("%", ""));
 
-        if (isNaN(descuentoNumero) || descuentoNumero < descuentoMinimo)
-          continue;
+        if (isNaN(descuentoNumero) || descuentoNumero < descuentoMinimo) continue;
 
         const precioViejo = await juego
           .$eval(".discount_original_price", (el) => el.textContent.trim())
@@ -194,9 +156,6 @@ export async function obtenerOfertasSteam(descuentoMinimo = 10) {
           .catch(() => "");
         if (!precioNuevo) continue;
 
-        const appid = urlJuego.match(/app\/(\d+)/)?.[1];
-        if (!appid) continue;
-
         ofertas.push({
           appid,
           nombre,
@@ -205,14 +164,10 @@ export async function obtenerOfertasSteam(descuentoMinimo = 10) {
           precioViejo: precioViejo ? `~${precioViejo}~` : "N/A",
           precioNuevo,
         });
-
-        if (ofertas.length >= 100) break;
       } catch (error) {
         console.warn("⚠️ Error al procesar juego:", error.message);
       }
     }
-
-    if (ofertas.length >= 100) break;
 
     const currentHeight = await page.evaluate(() => {
       window.scrollBy(0, window.innerHeight);
@@ -231,6 +186,6 @@ export async function obtenerOfertasSteam(descuentoMinimo = 10) {
 
   await browser.close();
 
-  console.log(`🏆 Total de juegos seleccionados: ${ofertas.length}`);
+  console.log(`🏆 Total de juegos únicos detectados: ${ofertas.length}`);
   return ofertas;
 }
