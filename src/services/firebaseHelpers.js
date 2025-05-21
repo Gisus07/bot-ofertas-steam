@@ -41,27 +41,30 @@ export function filtrarOfertasNuevasPorAppID(ofertas, appIDsExistentes) {
 
 /**
  * Elimina de Firestore las ofertas cuya fecha `hasta` ya ha pasado.
+ * @returns {Array} - Ofertas eliminadas con appid y nombre.
  */
 export async function eliminarOfertasVencidas() {
   const snapshot = await db.collection("ofertas").get();
   const ahora = new Date();
 
-  let eliminadas = 0;
+  const eliminadas = [];
 
   for (const doc of snapshot.docs) {
     const data = doc.data();
 
     if (!data.hasta) continue;
 
-    const fechaHasta = new Date(data.hasta);
+    const fechaHasta = new Date(data.hasta.trim());
     if (isNaN(fechaHasta)) continue;
 
     if (fechaHasta < ahora) {
       await db.collection("ofertas").doc(doc.id).delete();
       console.log(`🗑️ Oferta vencida eliminada: ${data.nombre} (AppID ${doc.id})`);
-      eliminadas++;
+      eliminadas.push({ appid: doc.id, nombre: data.nombre });
     }
   }
 
-  console.log(`\n✅ Ofertas vencidas eliminadas: ${eliminadas}`);
+  console.log(`\n✅ Ofertas vencidas eliminadas: ${eliminadas.length}`);
+  return eliminadas;
 }
+

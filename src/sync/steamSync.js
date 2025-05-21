@@ -1,28 +1,32 @@
-import { obtenerOfertasSteam, obtenerFechaConFallback } from "./src/services/steamScraper.js";
-import { guardarOferta } from "./src/services/dbService.js";
-import { verificarDescuentoSteam } from "./src/services/steamApiHelper.js";
+import {
+  obtenerOfertasSteam,
+  obtenerFechaConFallback,
+} from "../services/steamScraper.js";
+import { guardarOferta } from "../services/dbService.js";
+import { verificarDescuentoSteam } from "../services/steamApiHelper.js";
 import {
   obtenerAppIDsFirebase,
   filtrarOfertasNuevasPorAppID,
-  eliminarOfertasVencidas
-} from "./src/services/firebaseHelpers.js";
+  eliminarOfertasVencidas,
+} from "../services/firebaseHelpers.js";
 import pLimit from "p-limit";
+import { notificarEliminacion, notificarOferta } from "../services/notifier.js";
 
 const MAX_CONCURRENT = 5;
 const limit = pLimit(MAX_CONCURRENT);
 
-async function main() {
+// 🔁 Este será llamado desde index.js
+export default async function ejecutarSync(bot) {
   console.log("🔎 Obteniendo ofertas desde Steam...");
   const ofertas = await obtenerOfertasSteam(10);
   const total = ofertas.length;
   console.log(`🎮 Total juegos detectados: ${total}`);
 
-  // 🔍 Cargar AppIDs ya registrados en Firestore
   const appIDsExistentes = await obtenerAppIDsFirebase();
-
-  // ✂️ Filtrar las ofertas que aún no están en la DB
   const nuevasOfertas = filtrarOfertasNuevasPorAppID(ofertas, appIDsExistentes);
-  console.log(`📌 Ofertas nuevas (no registradas aún): ${nuevasOfertas.length}`);
+  console.log(
+    `📌 Ofertas nuevas (no registradas aún): ${nuevasOfertas.length}`
+  );
 
   let procesadas = 0;
 
@@ -37,7 +41,6 @@ async function main() {
           return;
         }
 
-        // 🗓️ Obtener fecha de finalización de oferta (solo si pasa la validación de descuento)
         const hasta = await obtenerFechaConFallback(oferta.url);
         if (!hasta) {
           console.log(`⚠️ No se pudo obtener la fecha para ${oferta.url}`);
@@ -48,14 +51,25 @@ async function main() {
           `✅ Descuento API: ${datosSteam.descuento_porcentaje}% - ${datosSteam.precio_actual} USD en ${oferta.url}`
         );
 
-        const nueva = await guardarOferta({
+        const fueGuardado = await guardarOferta({
           ...oferta,
           appid,
-          hasta
+          hasta,
         });
 
+        if (fueGuardado) {
+          await notificarOferta(bot, {
+            ...oferta,
+            appid,
+            hasta,
+            registrada: new Date().toISOString(),
+          });
+        }
+
         procesadas++;
-        process.stdout.write(`\r📦 Procesando ${procesadas}/${nuevasOfertas.length}...`);
+        process.stdout.write(
+          `\r📦 Procesando ${procesadas}/${nuevasOfertas.length}...`
+        );
       } catch (err) {
         console.error(`❌ Error al procesar ${oferta.url}:`, err.message);
       }
@@ -64,9 +78,9 @@ async function main() {
 
   await Promise.all(tareas);
   console.log("\n✅ Nuevas ofertas registradas:", procesadas);
-
   // 🧹 Limpieza de ofertas vencidas
-  await eliminarOfertasVencidas();
+  const eliminadas = await eliminarOfertasVencidas();
+  for (const oferta of eliminadas) {
+    await notificarEliminacion(bot, oferta);
+  }
 }
-
-main();

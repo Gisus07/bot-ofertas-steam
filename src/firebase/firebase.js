@@ -1,4 +1,3 @@
-// src/firebase/firebase.js
 import admin from "firebase-admin";
 import { readFileSync } from "fs";
 
