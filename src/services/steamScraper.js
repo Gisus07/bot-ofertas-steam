@@ -8,7 +8,8 @@ import {
   convertirFechaLiteralATimestamp,
 } from "../utils/fechaHelper.js";
 
-const URL = "https://store.steampowered.com/search/?supportedlang=spanish&category1=998&specials=1&ndl=1";
+const URL =
+  "https://store.steampowered.com/search/?supportedlang=spanish&category1=998&specials=1&ndl=1";
 
 export async function obtenerFechaConFallback(url) {
   const fechaAxios = await obtenerFechaFinOferta(url);
@@ -93,19 +94,30 @@ export async function obtenerFechaFinOferta(url) {
 
     const $ = cheerio.load(data);
     const contenedor = $(".game_purchase_discount_countdown");
-    if (contenedor.length === 0) return null;
+    if (contenedor.length === 0) {
+      console.log(`⚠️ No se encontró el contenedor de fecha en: ${url}`);
+      return null;
+    }
 
     const textoPlano = contenedor.text().trim();
+
+    // 1. Intentamos con reloj regresivo (ej. "Finaliza en 05:48:12")
+    let fechaRelativa = convertirTiempoRestanteATimestamp(textoPlano);
+    if (fechaRelativa) return fechaRelativa;
+
+    // 2. Intentamos con fecha literal (ej. "25 mayo" o "25 de mayo")
     const match = textoPlano.match(/(\d{1,2})\s*(?:de\s*)?(\w+)/i);
     if (match) {
-      const fechaIso = convertirFechaLiteralATimestamp(`${match[1]} ${match[2]}`);
+      const fechaIso = convertirFechaLiteralATimestamp(
+        `${match[1]} ${match[2]}`
+      );
       if (fechaIso) return fechaIso;
     }
 
-    console.log("⚠️ No se encontró fecha con ningún patrón.");
+    console.log(`⚠️ No se encontró fecha con ningún patrón en: ${url}`);
     return null;
   } catch (err) {
-    console.warn("⚠️ Error al obtener la fecha:", url, err.message);
+    console.warn(`⚠️ Error al obtener la fecha de: ${url}`, err.message);
     return null;
   }
 }
@@ -122,67 +134,57 @@ export async function obtenerOfertasSteam(descuentoMinimo = 10) {
   console.log("🎯 Aplicando filtro: solo juegos (category1=998)");
   await page.goto(URL, { waitUntil: "domcontentloaded" });
 
-  await new Promise((resolve) => setTimeout(resolve, 2000));
+  let scrollAttempts = 0;
+  let maxScrolls = 40;
+
+  while (scrollAttempts < maxScrolls) {
+    const juegosAntes = await page.$$eval(".search_result_row", (rows) => rows.length);
+    await page.evaluate(() => window.scrollBy(0, window.innerHeight));
+    await new Promise(resolve => setTimeout(resolve, 500));
+    const juegosDespues = await page.$$eval(".search_result_row", (rows) => rows.length);
+
+    if (juegosDespues === juegosAntes) {
+      scrollAttempts++;
+    } else {
+      scrollAttempts = 0;
+    }
+
+    if (juegosDespues > 1500) break;
+  }
+
+  const content = await page.content();
+  const $ = cheerio.load(content);
+  const juegos = $(".search_result_row");
 
   const appidsProcesados = new Set();
   const ofertas = [];
-  let previousHeight = 0;
-  let retry = 0;
 
-  while (retry < 5) {
-    const juegos = await page.$$(".search_result_row");
+  juegos.each((_, el) => {
+    const urlJuego = $(el).attr("href");
+    const appid = urlJuego.match(/app\/(\d+)/)?.[1];
+    if (!appid || appidsProcesados.has(appid)) return;
+    appidsProcesados.add(appid);
 
-    for (const juego of juegos) {
-      const urlJuego = await juego.evaluate((el) => el.href);
-      const appid = urlJuego.match(/app\/(\d+)/)?.[1];
-      if (!appid || appidsProcesados.has(appid)) continue;
+    const nombre = $(el).find(".title").text().trim();
+    const descuentoTexto = $(el).find(".discount_pct").text().trim();
+    const descuentoNumero = parseInt(
+      descuentoTexto.replace("-", "").replace("%", "")
+    );
+    if (isNaN(descuentoNumero) || descuentoNumero < descuentoMinimo) return;
 
-      appidsProcesados.add(appid);
+    const precioViejo = $(el).find(".discount_original_price").text().trim();
+    const precioNuevo = $(el).find(".discount_final_price").text().trim();
+    if (!precioNuevo) return;
 
-      try {
-        const nombre = await juego.$eval(".title", (el) => el.textContent.trim());
-        const descuentoTexto = await juego
-          .$eval(".discount_pct", (el) => el.textContent.trim())
-          .catch(() => "");
-        const descuentoNumero = parseInt(descuentoTexto.replace("-", "").replace("%", ""));
-
-        if (isNaN(descuentoNumero) || descuentoNumero < descuentoMinimo) continue;
-
-        const precioViejo = await juego
-          .$eval(".discount_original_price", (el) => el.textContent.trim())
-          .catch(() => "");
-        const precioNuevo = await juego
-          .$eval(".discount_final_price", (el) => el.textContent.trim())
-          .catch(() => "");
-        if (!precioNuevo) continue;
-
-        ofertas.push({
-          appid,
-          nombre,
-          url: urlJuego,
-          descuento: `-${descuentoNumero}%`,
-          precioViejo: precioViejo ? `~${precioViejo}~` : "N/A",
-          precioNuevo,
-        });
-      } catch (error) {
-        console.warn("⚠️ Error al procesar juego:", error.message);
-      }
-    }
-
-    const currentHeight = await page.evaluate(() => {
-      window.scrollBy(0, window.innerHeight);
-      return document.body.scrollHeight;
+    ofertas.push({
+      appid,
+      nombre,
+      url: urlJuego,
+      descuento: `-${descuentoNumero}%`,
+      precioViejo: precioViejo ? `~${precioViejo}~` : "N/A",
+      precioNuevo,
     });
-
-    if (currentHeight === previousHeight) {
-      retry++;
-    } else {
-      retry = 0;
-      previousHeight = currentHeight;
-    }
-
-    await new Promise((resolve) => setTimeout(resolve, 1000));
-  }
+  });
 
   await browser.close();
 
