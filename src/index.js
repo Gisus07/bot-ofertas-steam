@@ -74,6 +74,7 @@ ejecutarSyncProtegido(bot);
 
 // ⏰ Sincronización automática cada 30 minutos
 cron.schedule("*/30 * * * *", () => {
+  console.log("isSyncRunning", isSyncRunning)
   console.log("⏰ Ejecutando sincronización automática...");
   ejecutarSyncProtegido(bot);
 });
