@@ -8,7 +8,8 @@ const ofertasRef = db.collection("ofertas");
  */
 export async function guardarOferta(oferta) {
   const appid = oferta.url.match(/app\/(\d+)/)?.[1];
-  if (!appid) throw new Error("No se pudo extraer el appid de la URL: " + oferta.url);
+  if (!appid)
+    throw new Error("No se pudo extraer el appid de la URL: " + oferta.url);
 
   const docRef = ofertasRef.doc(appid);
   const doc = await docRef.get();
@@ -23,8 +24,7 @@ export async function guardarOferta(oferta) {
 
     // Verifica si hay cambios en precio o fecha
     const sinCambios =
-      datos.precioNuevo === oferta.precioNuevo &&
-      datos.hasta === oferta.hasta;
+      datos.precioNuevo === oferta.precioNuevo && datos.hasta === oferta.hasta;
 
     if (sinCambios) return false; // No actualizar
 
@@ -37,7 +37,7 @@ export async function guardarOferta(oferta) {
 
   await docRef.set({
     ...dataToSave,
-    registrada: new Date().toISOString(),
+    registrada: dataToSave.registrada || new Date().toISOString(),
   });
 
   return true;
@@ -56,5 +56,5 @@ export async function eliminarOferta(url) {
  */
 export async function obtenerUrlsRegistradas() {
   const snapshot = await ofertasRef.get();
-  return snapshot.docs.map(doc => doc.data().url);
+  return snapshot.docs.map((doc) => doc.data().url);
 }

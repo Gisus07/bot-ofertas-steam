@@ -20,9 +20,9 @@ export async function obtenerFechaConFallback(url) {
   console.log("⚙️ Usando Puppeteer como fallback para:", url);
   try {
     const browser = await puppeteer.launch({
-  headless: "new",
-  args: ['--no-sandbox']
-});
+      headless: "new",
+      args: ["--no-sandbox"],
+    });
 
     const page = await browser.newPage();
     await page.setUserAgent("Mozilla/5.0 Chrome/122.0.0.0");
@@ -72,17 +72,21 @@ export async function obtenerFechaConFallback(url) {
         return fechaLiteral;
       }
 
+      // Fallback manual si el texto no encajó pero sí hay día y mes
       const match =
         texto.match(/Offer ends\s+(\d{1,2})\s+(\w+)/i) ||
         texto.match(/finaliza el\s+(\d{1,2})\s+de\s+(\w+)/i);
 
-      await browser.close();
-
       if (match) {
-        return match[1] && match[2]
-          ? `${match[1]} ${match[2]}`
-          : `${match[2]} de ${match[3]}`;
+        const textoCompuesto = `${match[1]} ${match[2]}`;
+        const fechaFallback = convertirFechaLiteralATTimestamp(textoCompuesto);
+        await browser.close();
+        return fechaFallback || null;
       }
+
+      await browser.close();
+      console.log("⚠️ Puppeteer no encontró fecha.");
+      return null;
 
       console.log("⚠️ Puppeteer no encontró fecha.");
       return null;
@@ -168,7 +172,9 @@ export async function obtenerOfertasSteam(descuentoMinimo = 10) {
 
     for (const juego of juegos.slice(ofertas.length)) {
       try {
-        const nombre = await juego.$eval(".title", (el) => el.textContent.trim());
+        const nombre = await juego.$eval(".title", (el) =>
+          el.textContent.trim()
+        );
         const urlJuego = await juego.evaluate((el) => el.href);
         const descuentoTexto = await juego
           .$eval(".discount_pct", (el) => el.textContent.trim())
@@ -177,7 +183,8 @@ export async function obtenerOfertasSteam(descuentoMinimo = 10) {
           descuentoTexto.replace("-", "").replace("%", "")
         );
 
-        if (isNaN(descuentoNumero) || descuentoNumero < descuentoMinimo) continue;
+        if (isNaN(descuentoNumero) || descuentoNumero < descuentoMinimo)
+          continue;
 
         const precioViejo = await juego
           .$eval(".discount_original_price", (el) => el.textContent.trim())
@@ -227,4 +234,3 @@ export async function obtenerOfertasSteam(descuentoMinimo = 10) {
   console.log(`🏆 Total de juegos seleccionados: ${ofertas.length}`);
   return ofertas;
 }
-

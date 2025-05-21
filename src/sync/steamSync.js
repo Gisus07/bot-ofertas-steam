@@ -24,13 +24,14 @@ export default async function ejecutarSync(bot) {
 
   const appIDsExistentes = await obtenerAppIDsFirebase();
   const nuevasOfertas = filtrarOfertasNuevasPorAppID(ofertas, appIDsExistentes);
-  console.log(
-    `📌 Ofertas nuevas (no registradas aún): ${nuevasOfertas.length}`
-  );
+  console.log(`📌 Ofertas nuevas (no registradas aún): ${nuevasOfertas.length}`);
 
   let procesadas = 0;
 
-  const tareas = nuevasOfertas.map((oferta) =>
+  // 🔁 Invertimos el orden para guardar del 100 → 1
+  const nuevasOfertasInvertidas = [...nuevasOfertas].reverse();
+
+  const tareas = nuevasOfertasInvertidas.map((oferta) =>
     limit(async () => {
       try {
         const appid = oferta.appid;
@@ -77,7 +78,9 @@ export default async function ejecutarSync(bot) {
   );
 
   await Promise.all(tareas);
+
   console.log("\n✅ Nuevas ofertas registradas:", procesadas);
+
   // 🧹 Limpieza de ofertas vencidas
   const eliminadas = await eliminarOfertasVencidas();
   for (const oferta of eliminadas) {

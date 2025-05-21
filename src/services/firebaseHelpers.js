@@ -45,19 +45,18 @@ export function filtrarOfertasNuevasPorAppID(ofertas, appIDsExistentes) {
  */
 export async function eliminarOfertasVencidas() {
   const snapshot = await db.collection("ofertas").get();
-  const ahora = new Date();
+  const ahora = Date.now(); // más preciso y directo
 
   const eliminadas = [];
 
   for (const doc of snapshot.docs) {
     const data = doc.data();
-
     if (!data.hasta) continue;
 
-    const fechaHasta = new Date(data.hasta.trim());
-    if (isNaN(fechaHasta)) continue;
+    const fechaHastaMs = Date.parse(data.hasta); // más robusto
+    if (isNaN(fechaHastaMs)) continue;
 
-    if (fechaHasta < ahora) {
+    if (fechaHastaMs < ahora) {
       await db.collection("ofertas").doc(doc.id).delete();
       console.log(`🗑️ Oferta vencida eliminada: ${data.nombre} (AppID ${doc.id})`);
       eliminadas.push({ appid: doc.id, nombre: data.nombre });
@@ -67,4 +66,5 @@ export async function eliminarOfertasVencidas() {
   console.log(`\n✅ Ofertas vencidas eliminadas: ${eliminadas.length}`);
   return eliminadas;
 }
+
 
